@@ -1,0 +1,58 @@
+esphome:
+  name: "home"
+
+esp32:
+  board: upesy_wroom
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: "MADATHIL"
+  password: "madathil2017"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Yes Fallback Hotspot"
+    password: "1ChGp2R6Yu9w"
+
+# Web server configuration
+web_server:
+  port: 80
+
+# Output component for controlling GPIO pin (LED)
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: gpio_led
+    inverted: false  # You can set this to 'true' if your LED is inverted (turns on when low)
+
+# Light component using the output
+light:
+  - platform: binary
+    name: "ESP32 Onboard LED"
+    output: gpio_led
+    id: light_contrl
+    restore_mode: ALWAYS_OFF  # Ensure LED is off on startup
+
+# Optionally, expose a simple switch to control the onboard LED
+switch:
+  - platform: template
+    name: "Toggle Onboard LED"
+    turn_on_action:
+      - light.turn_on: light_contrl
+    turn_off_action:
+      - light.turn_off: light_contrl
+
+captive_portal:
+    

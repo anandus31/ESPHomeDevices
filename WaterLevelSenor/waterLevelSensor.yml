@@ -1,0 +1,136 @@
+esphome:
+  name: water_level_control
+  # includes:
+  #   - sro4m_sensor.h
+esp32:
+  board: upesy_wroom
+
+wifi:
+  ssid: "MADATHIL"
+  password: "madathil2017"
+
+uart:
+  id: uart_bus
+  rx_pin: GPIO16
+  tx_pin: GPIO17
+  baud_rate: 9600
+
+# sensor:
+#   - platform: custom
+#     lambda: |-
+#       auto sro4m_sensor = new SRO4MSensor(id(uart_bus));
+#       App.register_component(sro4m_sensor);
+#       return {sro4m_sensor};
+#     sensors:
+#       - name: "Water Level"
+#         unit_of_measurement: "mm"
+#         accuracy_decimals: 1
+#         id: water_level_sensor
+
+logger:
+  level: DEBUG
+
+web_server:
+  port: 80
+  include_internal: true
+
+# text_sensor:
+#   - platform: template
+#     name: "Water Level Text"
+#     lambda: |-
+#       return to_string(id(water_level_sensor).state) + " mm";
+#     update_interval: 1s
+
+binary_sensor:
+  - platform: gpio
+    pin: GPIO14
+    name: "On/Off Switch"
+    filters:
+      - delayed_on: 100ms
+      - delayed_off: 100ms
+    device_class: presence
+
+
+light:
+  - platform: neopixelbus
+    id: my_led
+    pin: GPIO13
+    num_leds: 5
+    type: GRB
+    variant: WS2812
+    name: "WS2812 LED Strip"
+    effects: 
+      - addressable_rainbow: 
+          name: Rainbow Effect
+      - addressable_color_wipe: 
+          name: Color Wipe Effect
+
+# # Define a virtual switch to control the LED strip
+# switch:
+#   - platform: template
+#     name: "LED Control"
+#     turn_on_action:
+#       - light.turn_on: my_led
+#     turn_off_action:
+#       - light.turn_off: my_led
+
+# Define a virtual switch to control the LED strip
+switch:
+  # - platform: template
+  #   name: "LED Control"
+  #   id: led_control_switch
+  #   turn_on_action:
+  #     - light.addressable_set:
+  #         id: my_led
+  #         range_from: 0
+  #         range_to: 4
+  #         red: 100%
+  #         green: 100%
+  #         blue: 100%
+  #     - switch.template.publish:
+  #         id: led_control_switch
+  #         state: ON  
+  #   turn_off_action:
+  #     - light.addressable_set:
+  #         id: my_led
+  #         range_from: 0
+  #         range_to: 4
+  #         red: 0%
+  #         green: 0%
+  #         blue: 0%
+  #     - switch.template.publish:
+  #         id: led_control_switch
+  #         state: OFF
+  # - platform: gpio
+  #   pin: GPIO12
+  #   name: "GPIO Output"
+  #   # restore_mode: RESTORE_DEFAULT_OFF
+  #   # inverted: true
+  #   id: power_switch
+
+# Define the virtual switch for GUI control
+
+  - platform: template
+    name: "Control Switch"
+    id: control_switch
+    optimistic: true
+
+# Define the GPIO switch that will be controlled with a delay
+  - platform: gpio
+    pin: GPIO12  # Replace GPIOXX with the actual GPIO pin number for the delayed output
+    name: "Delayed Output"
+    id: delayed_output
+
+# Automations to handle the delay
+interval:
+  - interval: 1s  # Check every second
+    then:
+      if:
+        condition:
+          switch.is_on: control_switch
+        then:
+          - delay: 2s  # Delay for 2 seconds before turning on the GPIO switch
+          - switch.turn_on: delayed_output
+        else:
+          - delay: 2s  # Delay for 2 seconds before turning off the GPIO switch
+          - switch.turn_off: delayed_output

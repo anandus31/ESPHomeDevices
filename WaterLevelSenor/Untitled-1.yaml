@@ -1,0 +1,28 @@
+switch:
+  - platform: gpio
+    pin: GPIOXX  # Replace GPIOXX with the actual GPIO pin number for your switch
+    name: "Digital Output"
+    id: my_switch
+
+sensor:
+  - platform: custom
+    lambda: |-
+      auto sro4m_sensor = new SRO4MSensor(id(uart_bus));
+      App.register_component(sro4m_sensor);
+      return {sro4m_sensor};
+    sensors:
+      - name: "Water Level"
+        unit_of_measurement: "mm"
+        accuracy_decimals: 1
+        id: water_level_sensor
+
+interval:
+  - interval: 1s  # Adjust the interval as needed
+    then:
+      if:
+        condition:
+          switch.is_on: my_switch
+        then:
+          - delay: 2s  # Adjust the delay as needed
+          - lambda: |-
+              id(water_level_sensor).publish_state(id(sro4m_sensor).read_value());

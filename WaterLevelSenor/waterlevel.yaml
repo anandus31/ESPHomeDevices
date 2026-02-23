@@ -1,0 +1,131 @@
+esphome:
+  name: water_level_control
+
+esp32:
+  board: upesy_wroom
+  framework:
+    type: arduino
+
+wifi:
+  ssid: "MADATHIL"
+  password: "madathil2017"
+
+  # Optional: Static IP configuration
+  # manual_ip:
+  #   static_ip: 192.168.1.100
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API integration
+api:
+  password: ""
+
+# Enable OTA (Over-the-Air) updates
+ota:
+  - platform: esphome
+    password: ""
+
+
+# GPIO Pin Configuration for Water Level Sensor (assuming a digital input)
+binary_sensor:
+  - platform: gpio
+    pin: GPIO13  # Replace with the actual GPIO pin where the water level sensor is connected
+    name: "Water Filling Status"
+    id: water_filling
+    device_class: moisture
+    on_press:
+      then:
+        - logger.log: "Water is filling"
+    on_release:
+      then:
+        - logger.log: "Water has stopped filling"
+
+# Motor control relay GPIO pin
+switch:
+  - platform: gpio
+    pin: GPIO5  # Replace with the GPIO pin connected to the motor relay
+    name: "Motor Control"
+    id: motor_switch
+
+# Control the motor based on water level
+sensor:
+  - platform: template
+    name: "Water Level"
+    id: water_level
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      // Replace this with your sensor reading logic
+      // For example, simulate a random water level between 0 and 100
+      return (rand() % 101);
+
+# Automation for controlling the motor based on the water level
+automation:
+  - alias: "Turn on Motor if Water Level Below Threshold"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.water_level
+      below: 20  # Set the water level threshold to turn on the motor
+    action:
+      - switch.turn_on: motor_switch
+
+  - alias: "Turn off Motor if Water Level Above Threshold"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.water_level
+      above: 90  # Set the water level threshold to turn off the motor
+    action:
+      - switch.turn_off: motor_switch
+
+# Display a water tank graphic with a dynamic water level
+html:
+  - url: /water_level
+    content: |-
+      <html>
+        <head>
+          <style>
+            .tank {
+              width: 100px;
+              height: 300px;
+              border: 2px solid black;
+              position: relative;
+              margin: 0 auto;
+              background-color: #f0f0f0;
+            }
+            .water {
+              position: absolute;
+              bottom: 0;
+              width: 100%;
+              background-color: #00bfff;
+              transition: height 1s;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Water Tank Level</h2>
+          <div class="tank">
+            <div class="water" style="height: {{ states('sensor.water_level') }}%"></div>
+          </div>
+          <br>
+          <h3>Motor Status</h3>
+          <button onclick="toggleMotor()">Toggle Motor</button>
+          <script>
+            function toggleMotor() {
+              fetch('/toggle_motor', { method: 'POST' });
+            }
+          </script>
+        </body>
+      </html>
+
+# Handle toggle motor functionality
+web_server:
+  port: 80
+  routes:
+    - path: "/toggle_motor"
+      method: POST
+      handler: |-
+        switch.toggle: motor_switch

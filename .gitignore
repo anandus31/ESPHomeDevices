@@ -1,0 +1,4 @@
+# ESPHome build artifacts
+**/.esphome/
+**/.pioenvs/
+**/.piolibdeps/
