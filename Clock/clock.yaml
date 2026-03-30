@@ -1,0 +1,161 @@
+esphome:
+  name: esp32c3mini-clock
+  on_boot:
+    priority: -10
+    then:
+      - light.turn_on:
+          id: neo_pixel_clock
+          effect: "7Segment Clock"
+          brightness: 70%
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Manual IP (optional - can help with connection issues)
+  # manual_ip:
+  #   static_ip: 192.168.1.100
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Enable OTA updates
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+# Enable web server
+web_server:
+  port: 80
+
+# Time component for clock
+time:
+  - platform: homeassistant
+    id: esptime
+
+# Board specific configuration
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Light component for WS2812B (Neo Pixel) LED on GPIO1
+light:
+  - platform: fastled_clockless
+    chipset: WS2812B
+    pin: GPIO1
+    num_leds: 30
+    rgb_order: GRB
+    name: "Clock Neo Pixel"
+    id: neo_pixel_clock
+    effects:
+      - addressable_lambda:
+          name: "7Segment Clock"
+          update_interval: 100ms
+          lambda: |-
+            // Get current time
+            time_t now = ::time(nullptr);
+            struct tm *timeinfo = ::localtime(&now);
+            
+            int h = timeinfo->tm_hour;  // 24-hour format
+            int m = timeinfo->tm_min;
+            int s = timeinfo->tm_sec;
+            
+            // Extract digits
+            int h_tens = h / 10;
+            int h_ones = h % 10;
+            int m_tens = m / 10;
+            int m_ones = m % 10;
+            
+            // 7-segment patterns (E, D, C, G, F, A, B)
+            // Bit positions: [0]=E, [1]=D, [2]=C, [3]=G, [4]=F, [5]=A, [6]=B
+            uint8_t patterns[10] = {
+              0b1110111,  // 0: A B C D E F
+              0b1000100,  // 1: B C
+              0b1101011,  // 2: A B D E G
+              0b1101110,  // 3: A B C D G
+              0b1011100,  // 4: B C F G
+              0b0111110,  // 5: A C D F G
+              0b0111111,  // 6: A C D E F G
+              0b1100100,  // 7: A B C
+              0b1111111,  // 8: All
+              0b1111110   // 9: A B C D F G
+            };
+            
+            // RGB colors for each digit position (white off, red on)
+            Color color_on = Color(0, 255, 0);      // Red for ON segments
+            Color color_off = Color(0, 0, 0); // White for OFF segments
+            
+            auto display_digit = [&](int digit, int segment_offset) {
+              uint8_t pattern = patterns[digit];
+              for(int i = 0; i < 7; i++) {
+                if(pattern & (1 << i)) {
+                  it[segment_offset + i] = color_on;   // Red for ON
+                } else {
+                  it[segment_offset + i] = color_off;  // White for OFF
+                }
+              }
+            };
+            
+            // Clear all
+            it.all() = Color(0, 0, 0);
+            
+            // Display time - white off, red on
+            display_digit(h_tens, 0);      // Segment 1
+            display_digit(h_ones, 7);      // Segment 2
+            display_digit(m_tens, 16);     // Segment 3
+            display_digit(m_ones, 23);     // Segment 4
+            
+            // Blink colon dots with seconds
+            if(s % 2 == 0) {
+              // Change color based on seconds (cycling through colors)
+              int color_cycle = s / 2 % 6;
+              Color colon_color;
+              switch(color_cycle) {
+                case 0: colon_color = Color(255, 0, 0); break;    // Red
+                case 1: colon_color = Color(255, 127, 0); break;  // Orange
+                case 2: colon_color = Color(255, 255, 0); break;  // Yellow
+                case 3: colon_color = Color(0, 255, 0); break;    // Green
+                case 4: colon_color = Color(0, 0, 255); break;    // Blue
+                case 5: colon_color = Color(148, 0, 211); break;  // Violet
+              }
+              it[14] = colon_color;  // Top dot
+              it[15] = colon_color;  // Bottom dot
+            } else {
+              it[14] = Color(0, 0, 0);
+              it[15] = Color(0, 0, 0);
+            }
+      - pulse:
+      - strobe:
+
+# Buttons to control effects
+button:
+  - platform: template
+    name: "Start Clock"
+    on_press:
+      - light.turn_on:
+          id: neo_pixel_clock
+          effect: "7Segment Clock"
+          brightness: 50%
+  - platform: template
+    name: "Change Digit Color - Blue"
+    on_press:
+      - light.turn_on:
+          id: neo_pixel_clock
+          effect: "7Segment Clock"
+          brightness: 50%
+  - platform: template
+    name: "Turn Off Clock"
+    on_press:
+      - light.turn_off:
+          id: neo_pixel_clock
