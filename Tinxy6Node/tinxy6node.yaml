@@ -157,28 +157,38 @@ switch:
       - uart.write: "#6100#"
     turn_off_action:
       - uart.write: "#6000#"
-    on_turn_on:
-      - delay: !lambda "return id(relay_6_timer).state * 1000;"
-      - if:
-          condition:
-            - switch.is_on: relay_6
-            - for:
-                time: 3s
-                condition:
-                  - switch.is_on: relay_6
-          then:
-            - switch.turn_off: relay_6
 
-number:
-  - platform: template
-    name: "Relay 6 Auto-Off Timer (s)"
-    id: relay_6_timer
-    optimistic: true
-    mode: box
-    min_value: 5
-    max_value: 3600
-    step: 1
-    initial_value: 60
-    restore_value: true
-    set_action:
-      - logger.log: "Timer updated"
+#   - platform: template
+#     id: relay_6
+#     name: "Tinxy Switch 6"
+#     optimistic: true
+#     restore_mode: RESTORE_DEFAULT_OFF
+#     turn_on_action:
+#       - uart.write: "#6100#"
+#     turn_off_action:
+#       - uart.write: "#6000#"
+#     on_turn_on:
+#       - delay: !lambda "return id(relay_6_timer).state * 1000;"
+#       - if:
+#           condition:
+#             - switch.is_on: relay_6
+#             - for:
+#                 time: 3s
+#                 condition:
+#                   - switch.is_on: relay_6
+#           then:
+#             - switch.turn_off: relay_6
+
+# number:
+#   - platform: template
+#     name: "Relay 6 Auto-Off Timer (s)"
+#     id: relay_6_timer
+#     optimistic: true
+#     mode: box
+#     min_value: 5
+#     max_value: 3600
+#     step: 1
+#     initial_value: 60
+#     restore_value: true
+#     set_action:
+#       - logger.log: "Timer updated"
